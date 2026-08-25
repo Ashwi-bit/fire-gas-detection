@@ -1,0 +1,75 @@
+MEGHA PROJECT - FRONTEND SETUP GUIDE
+=====================================
+
+STEP 1: Navigate to the project folder
+----------------------------------------
+cd path\to\copied\frontend_megha
+
+
+STEP 2: Confirm Node.js is installed
+----------------------------------------
+node --version
+
+(If this shows an error, install Node.js first from https://nodejs.org
+before continuing)
+
+
+STEP 3: If a node_modules folder was copied along with the project,
+delete it first (it can cause errors on a different machine)
+----------------------------------------
+rmdir /s /q node_modules
+
+
+STEP 4: Install all project dependencies
+----------------------------------------
+npm install
+
+(This can take a few minutes the first time)
+
+
+STEP 5: Confirm google-services.json is present
+----------------------------------------
+dir
+
+Check that "google-services.json" appears in the file list.
+This file is required for Firebase to work and must be copied
+manually (it is not included via GitHub/git for security reasons).
+
+
+STEP 6: Start the app
+----------------------------------------
+npx expo start
+
+If push notifications need to be tested, use this instead:
+npx expo start --dev-client
+
+
+IMPORTANT NOTES
+=====================================
+
+1. BACKEND IP ADDRESS
+   The file App.js contains a hardcoded IP address used to connect
+   to the backend server (used for push notification registration).
+   If the backend is running on a different laptop, open App.js and
+   update this line with that laptop's current IP address:
+
+       fetch('http://YOUR_BACKEND_IP:5000/api/register-device', ...)
+
+   To find a laptop's current IP address, run:
+       ipconfig
+   and look for "IPv4 Address" under the active Wi-Fi adapter.
+
+
+2. PUSH NOTIFICATIONS
+   Push notifications only work through the custom development build
+   (.apk) created using EAS Build - NOT through the regular Expo Go
+   app. If push notifications need to be tested on a new device,
+   install the same .apk build, or create a new one using:
+
+       eas build --profile development --platform android
+
+
+3. SAME WI-FI NETWORK REQUIRED
+   The phone running the app and the laptop running the backend must
+   be connected to the same Wi-Fi network for local features (like
+   device registration) to work correctly.

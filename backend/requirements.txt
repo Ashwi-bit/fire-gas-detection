@@ -1,0 +1,11 @@
+Flask
+Flask-Cors
+python-dotenv
+firebase-admin
+scikit-learn
+pandas
+numpy
+joblib
+xgboost
+matplotlib
+seaborn
