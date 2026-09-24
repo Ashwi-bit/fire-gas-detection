@@ -1,111 +1,177 @@
-// src/screens/HomeScreen.js
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { ref, onValue } from 'firebase/database';
 import { rtdb } from '../services/firebaseConfig';
-
-// Matches the ESP32's actual Realtime Database structure: /sensor/{temp, humidity, gas, flame}
-const SENSOR_PATH = 'sensor';
-
-function getRiskInfo(riskPercent) {
-  if (riskPercent >= 70) return { label: 'Danger', color: '#c0392b', bg: '#fdecea' };
-  if (riskPercent >= 35) return { label: 'Caution', color: '#b5750b', bg: '#fdf3e0' };
-  return { label: 'Safe', color: '#2e7d32', bg: '#eaf5ea' };
-}
+import { colors, riskColors, spacing, radius, type } from '../theme';
 
 export default function HomeScreen() {
   const [data, setData] = useState(null);
-  const [lastUpdated, setLastUpdated] = useState(null);
-  const [refreshing, setRefreshing] = useState(false);
+  const [prediction, setPrediction] = useState(null);
+  const [loading, setLoading] = useState(true);
 
+  // Listen to latest sensor data — unchanged
   useEffect(() => {
-    const sensorRef = ref(rtdb, SENSOR_PATH);
+    const sensorRef = ref(rtdb, 'sensor/latest');
     const unsubscribe = onValue(sensorRef, (snapshot) => {
       const val = snapshot.val();
-      setData(val);
-      setLastUpdated(new Date());
+      if (val) {
+        setData(val);
+        setLoading(false);
+      }
     });
-    return unsubscribe; // detaches the listener when screen unmounts
+    return () => unsubscribe();
   }, []);
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    // onValue is already live, this just gives pull-to-refresh a visual moment
-    setTimeout(() => setRefreshing(false), 600);
-  };
+  // Listen to automatic prediction — unchanged
+  useEffect(() => {
+    const predictionRef = ref(rtdb, 'sensor/prediction');
+    const unsubscribe = onValue(predictionRef, (snapshot) => {
+      const val = snapshot.val();
+      if (val) {
+        setPrediction(val);
+        console.log('Auto Prediction:', val);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
-  if (!data) {
+  const risk = riskColors[prediction?.risk_level] || riskColors.default;
+
+  if (loading) {
     return (
       <View style={styles.centered}>
-        <Text style={styles.loadingText}>Waiting for sensor data...</Text>
+        <Image source={require('../../assets/logo.png')} style={styles.loadingLogo} />
+        <Text style={styles.loadingText}>Waiting for live data…</Text>
       </View>
     );
   }
 
-  // NOTE: riskPercent should ideally be computed server-side (Cloud Function running
-  // your ML model) and written back to this same node, e.g. data.riskPercent.
-  // Placeholder fallback below so the screen works even before that's wired up.
-  const riskPercent = data.riskPercent ?? Math.min(100, Math.round((data.gas || 0) / 10));
-  const risk = getRiskInfo(riskPercent);
-
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-    >
-      <View style={[styles.riskCard, { backgroundColor: risk.bg }]}>
-        <Text style={[styles.riskLabel, { color: risk.color }]}>{risk.label}</Text>
-        <Text style={[styles.riskPercent, { color: risk.color }]}>{riskPercent}% risk</Text>
-        {lastUpdated && (
-          <Text style={styles.timestamp}>
-            Updated {lastUpdated.toLocaleTimeString()}
-          </Text>
-        )}
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
+      <View style={styles.headerRow}>
+        <View style={styles.headerLeft}>
+          <Image source={require('../../assets/logo.png')} style={styles.headerLogo} />
+          <Text style={styles.headerTitle}>Megha</Text>
+        </View>
+        <View style={styles.liveBadge}>
+          <View style={styles.liveDot} />
+          <Text style={styles.liveText}>Live</Text>
+        </View>
       </View>
 
-      <View style={styles.grid}>
-        <SensorTile label="Gas (MQ2)" value={data.gas} unit="ppm" />
-        <SensorTile label="Temperature" value={data.temp} unit="°C" />
-        <SensorTile label="Humidity" value={data.humidity} unit="%" />
-        <SensorTile
-          label="Flame"
-          value={data.flame === 1 ? 'Detected' : 'None'}
-          unit=""
-        />
-      </View>
+      {/* HERO RISK CARD */}
+      {prediction && (
+        <View style={[styles.heroCard, { borderColor: risk.fg }]}>
+          <View style={[styles.heroRing, { borderColor: risk.fg, backgroundColor: risk.bg }]}>
+            <Ionicons name="shield-checkmark" size={30} color={risk.fg} />
+            <Text style={[styles.heroPercent, { color: risk.fg }]}>{prediction.prediction}</Text>
+          </View>
+          <Text style={[styles.heroLevel, { color: risk.fg }]}>
+            {prediction.risk_level} RISK
+          </Text>
+          <Text style={styles.heroTimestamp}>Updated {prediction.timestamp}</Text>
+        </View>
+      )}
+
+      {/* SENSOR GRID */}
+      {data && (
+        <View style={styles.grid}>
+          <MetricTile icon="flame" iconColor={colors.flame} label="Gas" value={`${data.gas} ppm`} />
+          <MetricTile icon="thermometer" iconColor={colors.warn} label="Temperature" value={`${data.temp}°C`} />
+          <MetricTile icon="water" iconColor={colors.glow} label="Humidity" value={`${data.humidity}%`} />
+          <MetricTile
+            icon="bonfire"
+            iconColor={data.flame === 1 ? colors.critical : colors.safe}
+            label="Flame"
+            value={data.flame === 1 ? 'Detected' : 'None'}
+          />
+        </View>
+      )}
     </ScrollView>
   );
 }
 
-function SensorTile({ label, value, unit }) {
+function MetricTile({ icon, iconColor, label, value }) {
   return (
     <View style={styles.tile}>
+      <View style={[styles.tileIconWrap, { borderColor: iconColor }]}>
+        <Ionicons name={icon} size={18} color={iconColor} />
+      </View>
       <Text style={styles.tileLabel}>{label}</Text>
-      <Text style={styles.tileValue}>
-        {value ?? '--'} {unit}
-      </Text>
+      <Text style={styles.tileValue}>{value}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fafafa', padding: 16 },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  loadingText: { color: '#888', fontSize: 15 },
-  riskCard: { borderRadius: 12, padding: 20, marginBottom: 20 },
-  riskLabel: { fontSize: 22, fontWeight: '700' },
-  riskPercent: { fontSize: 16, marginTop: 4 },
-  timestamp: { fontSize: 12, color: '#888', marginTop: 8 },
+  container: { flex: 1, backgroundColor: colors.bg, paddingHorizontal: spacing.md, paddingTop: spacing.lg },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.bg },
+  loadingLogo: { width: 72, height: 72, borderRadius: radius.lg, marginBottom: spacing.md },
+  loadingText: { color: colors.textSecondary, ...type.body },
+
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  headerLeft: { flexDirection: 'row', alignItems: 'center' },
+  headerLogo: { width: 34, height: 34, borderRadius: 9, marginRight: spacing.sm },
+  headerTitle: { color: colors.textPrimary, ...type.h1 },
+  liveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.safe, marginRight: 6 },
+  liveText: { color: colors.textSecondary, ...type.small },
+
+  heroCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1.5,
+    paddingVertical: spacing.xl,
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  heroRing: {
+    width: 132,
+    height: 132,
+    borderRadius: 66,
+    borderWidth: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  heroPercent: { ...type.hero, marginTop: 2 },
+  heroLevel: { ...type.h2, letterSpacing: 1, marginBottom: 4 },
+  heroTimestamp: { color: colors.textMuted, ...type.small },
+
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
   tile: {
     width: '48%',
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 16,
-    marginBottom: 14,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: '#eee',
+    borderColor: colors.border,
+    padding: spacing.md,
+    marginBottom: spacing.md,
   },
-  tileLabel: { fontSize: 13, color: '#777', marginBottom: 6 },
-  tileValue: { fontSize: 20, fontWeight: '600', color: '#222' },
+  tileIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.sm,
+  },
+  tileLabel: { color: colors.textSecondary, ...type.label, marginBottom: 4 },
+  tileValue: { color: colors.textPrimary, ...type.h2 },
 });

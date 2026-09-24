@@ -11,8 +11,7 @@
     },
     "android": {
       "package": "com.megha.project",
-         "googleServicesFile": "./google-services.json",
-
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -22,6 +21,14 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-status-bar"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "8f6800ac-bee9-41ef-bd45-2478622bf6ff"
+      }
     }
   }
 }

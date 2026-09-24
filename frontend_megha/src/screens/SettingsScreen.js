@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Alert,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import {
   collection,
@@ -21,6 +22,7 @@ import {
 } from 'firebase/firestore';
 import { firestore } from '../services/firebaseConfig';
 import { useAuth } from '../context/AuthContext';
+import { colors, spacing, radius, type } from '../theme';
 
 export default function SettingsScreen() {
   const { user, logout } = useAuth();
@@ -32,7 +34,6 @@ export default function SettingsScreen() {
 
   useEffect(() => {
     if (!user) return;
-    // contacts live at users/{uid}/emergencyContacts
     const contactsRef = collection(firestore, 'users', user.uid, 'emergencyContacts');
     const unsubscribe = onSnapshot(contactsRef, (snapshot) => {
       setContacts(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
@@ -115,15 +116,18 @@ export default function SettingsScreen() {
       <FlatList
         data={contacts}
         keyExtractor={(item) => item.id}
-        style={{ marginVertical: 12 }}
+        style={{ marginVertical: spacing.md }}
         renderItem={({ item }) => (
           <View style={styles.contactRow}>
-            <View>
+            <View style={styles.contactAvatar}>
+              <Ionicons name="person" size={16} color={colors.glow} />
+            </View>
+            <View style={{ flex: 1 }}>
               <Text style={styles.contactName}>{item.name}</Text>
               <Text style={styles.contactPhone}>{item.phone}</Text>
             </View>
             <TouchableOpacity onPress={() => removeContact(item.id)}>
-              <Text style={styles.remove}>Remove</Text>
+              <Ionicons name="trash-outline" size={18} color={colors.flame} />
             </TouchableOpacity>
           </View>
         )}
@@ -132,26 +136,37 @@ export default function SettingsScreen() {
         }
       />
 
-      <TextInput
-        style={styles.input}
-        placeholder="Contact name"
-        value={name}
-        onChangeText={setName}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Phone number"
-        keyboardType="phone-pad"
-        value={phone}
-        onChangeText={setPhone}
-      />
+      <View style={styles.inputWrap}>
+        <Ionicons name="person-outline" size={18} color={colors.textMuted} style={styles.inputIcon} />
+        <TextInput
+          style={styles.input}
+          placeholder="Contact name"
+          placeholderTextColor={colors.textMuted}
+          value={name}
+          onChangeText={setName}
+        />
+      </View>
+      <View style={styles.inputWrap}>
+        <Ionicons name="call-outline" size={18} color={colors.textMuted} style={styles.inputIcon} />
+        <TextInput
+          style={styles.input}
+          placeholder="Phone number"
+          placeholderTextColor={colors.textMuted}
+          keyboardType="phone-pad"
+          value={phone}
+          onChangeText={setPhone}
+        />
+      </View>
+
       <TouchableOpacity style={styles.addButton} onPress={addContact}>
+        <Ionicons name="add-circle-outline" size={18} color={colors.bg} style={{ marginRight: 6 }} />
         <Text style={styles.addButtonText}>Add contact</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.addButton} onPress={captureLocation} disabled={locationLoading}>
-        <Text style={styles.addButtonText}>
-          {locationLoading ? 'Getting location...' : 'Set device location'}
+      <TouchableOpacity style={styles.locationButton} onPress={captureLocation} disabled={locationLoading}>
+        <Ionicons name="location-outline" size={18} color={colors.glow} style={{ marginRight: 6 }} />
+        <Text style={styles.locationButtonText}>
+          {locationLoading ? 'Getting location…' : 'Set device location'}
         </Text>
       </TouchableOpacity>
       {deviceLocation && (
@@ -161,6 +176,7 @@ export default function SettingsScreen() {
       )}
 
       <TouchableOpacity style={styles.logoutButton} onPress={logout}>
+        <Ionicons name="log-out-outline" size={18} color={colors.flame} style={{ marginRight: 6 }} />
         <Text style={styles.logoutText}>Log out</Text>
       </TouchableOpacity>
     </View>
@@ -168,36 +184,69 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff', padding: 20 },
-  sectionTitle: { fontSize: 18, fontWeight: '600', marginBottom: 4 },
-  hint: { fontSize: 13, color: '#888' },
+  container: { flex: 1, backgroundColor: colors.bg, padding: spacing.lg },
+  sectionTitle: { color: colors.textPrimary, ...type.h1, fontSize: 20, marginBottom: 4 },
+  hint: { color: colors.textMuted, ...type.small, marginTop: 4 },
   contactRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  contactName: { fontSize: 15, fontWeight: '500' },
-  contactPhone: { fontSize: 13, color: '#777' },
-  remove: { color: '#c0392b', fontSize: 13 },
-  input: {
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 10,
-    fontSize: 15,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    padding: spacing.sm,
+    marginBottom: spacing.sm,
   },
+  contactAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.surfaceAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.sm,
+  },
+  contactName: { color: colors.textPrimary, ...type.label, fontSize: 15 },
+  contactPhone: { color: colors.textSecondary, ...type.small },
+  inputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  inputIcon: { marginRight: spacing.sm },
+  input: { flex: 1, paddingVertical: 12, color: colors.textPrimary, ...type.body },
   addButton: {
-    backgroundColor: '#222',
-    borderRadius: 8,
+    flexDirection: 'row',
+    backgroundColor: colors.glow,
+    borderRadius: radius.md,
     padding: 14,
     alignItems: 'center',
-    marginBottom: 24,
+    justifyContent: 'center',
+    marginBottom: spacing.lg,
   },
-  addButtonText: { color: '#fff', fontWeight: '600' },
-  logoutButton: { alignItems: 'center', padding: 12 },
-  logoutText: { color: '#d84b30', fontWeight: '600' },
+  addButtonText: { color: colors.bg, fontWeight: '700' },
+  locationButton: {
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderColor: colors.glow,
+    borderRadius: radius.md,
+    padding: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.sm,
+  },
+  locationButtonText: { color: colors.glow, fontWeight: '600' },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.md,
+    marginTop: spacing.md,
+  },
+  logoutText: { color: colors.flame, fontWeight: '600' },
 });
