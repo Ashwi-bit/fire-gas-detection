@@ -23,7 +23,7 @@ const int daylightOffset_sec = 0;
 
 DHT dht(DHT_PIN, DHTTYPE);
 
-// Function prototypes (must be BEFORE setup/loop)
+// Function prototypes
 String getTimestamp();
 String getDate();
 String getTime();
@@ -70,7 +70,10 @@ void loop() {
   float temp = dht.readTemperature();
   float humidity = dht.readHumidity();
   int gas = analogRead(MQ2_PIN);
-  int flame = digitalRead(FLAME_PIN);
+
+  // ✅ FIXED: Invert flame reading (Active LOW sensor)
+  int flameRaw = digitalRead(FLAME_PIN);
+  int flame = !flameRaw;  // 1 = Flame detected, 0 = No flame
 
   if (isnan(temp) || isnan(humidity)) {
     Serial.println("❌ DHT Sensor Error");
@@ -89,7 +92,9 @@ void loop() {
   Serial.print("🌡️ Temp: "); Serial.println(temp);
   Serial.print("💧 Humidity: "); Serial.println(humidity);
   Serial.print("💨 Gas: "); Serial.println(gas);
-  Serial.print("🔥 Flame: "); Serial.println(flame);
+  Serial.print("🔥 Flame (final): "); Serial.println(flame);
+  Serial.print("   Raw pin value: "); Serial.println(flameRaw);
+  Serial.print("   Status: "); Serial.println(flame == 1 ? "DETECTED" : "None");
 
   if (WiFi.status() == WL_CONNECTED) {
     HTTPClient http;
@@ -128,6 +133,11 @@ void loop() {
 
     http.begin(firebaseHost + "/sensor/latest/flame.json");
     http.PUT(String(flame));
+    http.end();
+
+    // ✅ NEW: Send lastUpdate timestamp for stale detection
+    http.begin(firebaseHost + "/sensor/lastUpdate.json");
+    http.PUT("\"" + timestamp + "\"");
     http.end();
 
     Serial.println("✅ All data sent to Firebase");
