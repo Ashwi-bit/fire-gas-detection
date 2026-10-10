@@ -1,7 +1,7 @@
 // src/services/api.js
 
 // ⚠️ REPLACE WITH YOUR LAPTOP'S ACTUAL IP ADDRESS
-const API_URL = "http://192.168.117.234:5000";
+const API_URL = "https://fire-gas-detection-backend.onrender.com";
 
 // ============================================================
 // PREDICTION - Current AI prediction from Flask
