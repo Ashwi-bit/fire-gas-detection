@@ -1,7 +1,6 @@
 // src/services/pushNotifications.js
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
-import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { ref, set } from 'firebase/database';
 import { rtdb } from './firebaseConfig';
@@ -11,7 +10,9 @@ import { rtdb } from './firebaseConfig';
 // ─────────────────────────────────────────────────────────
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
+    shouldShowAlert: true, // older SDKs
+    shouldShowBanner: true, // newer SDKs
+    shouldShowList: true, // newer SDKs
     shouldPlaySound: true,
     shouldSetBadge: true,
   }),
@@ -21,8 +22,6 @@ Notifications.setNotificationHandler({
 // 2. Register device and get FCM token
 // ─────────────────────────────────────────────────────────
 export async function registerForPushNotificationsAsync() {
-  let token;
-
   // Create Android notification channel
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('alerts', {
@@ -95,8 +94,8 @@ export function setupNotificationListeners() {
 
   // Return cleanup function
   return () => {
-    Notifications.removeNotificationSubscription(notificationListener);
-    Notifications.removeNotificationSubscription(responseListener);
+    notificationListener.remove();
+    responseListener.remove();
   };
 }
 
@@ -110,6 +109,9 @@ export async function sendTestNotification() {
       body: 'Notifications are working!',
       sound: 'default',
     },
-    trigger: { seconds: 1 },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+      seconds: 1,
+    },
   });
 }
