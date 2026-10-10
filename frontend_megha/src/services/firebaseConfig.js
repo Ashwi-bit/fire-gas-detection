@@ -1,8 +1,13 @@
 // src/services/firebaseConfig.js
-import { initializeApp } from 'firebase/app';
-import { initializeAuth, browserLocalPersistence } from 'firebase/auth'; // Changed import
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import {
+  initializeAuth,
+  getAuth,
+  getReactNativePersistence,
+} from 'firebase/auth';
 import { getDatabase } from 'firebase/database';
-// import AsyncStorage from '@react-native-async-storage/async-storage'; // No longer needed
+import { initializeFirestore, getFirestore } from 'firebase/firestore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Your Firebase config
 const firebaseConfig = {
@@ -15,13 +20,32 @@ const firebaseConfig = {
   appId: "1:536066865606:android:97c1b17fba4dc9b4829ac7"
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+// Initialize Firebase (safe against double-init on fast refresh)
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
-// Auth with persistence for WEB (browser)
-export const auth = initializeAuth(app, {
-  persistence: browserLocalPersistence,
-});
+// Auth with AsyncStorage persistence so users stay logged in on the phone
+let authInstance;
+try {
+  authInstance = initializeAuth(app, {
+    persistence: getReactNativePersistence(AsyncStorage),
+  });
+} catch (e) {
+  // Already initialized
+  authInstance = getAuth(app);
+}
+export const auth = authInstance;
 
-// Realtime Database
+// Realtime Database (sensor data + FCM token)
 export const rtdb = getDatabase(app);
+
+// Firestore (emergency contacts + device location in SettingsScreen)
+let firestoreInstance;
+try {
+  firestoreInstance = initializeFirestore(app, {
+    experimentalAutoDetectLongPolling: true,
+  });
+} catch (e) {
+  // Already initialized
+  firestoreInstance = getFirestore(app);
+}
+export const firestore = firestoreInstance;
