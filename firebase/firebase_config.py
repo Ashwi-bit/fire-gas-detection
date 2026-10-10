@@ -1,14 +1,18 @@
 import firebase_admin
 from firebase_admin import credentials, db
 from pathlib import Path
+import os
+
 
 
 # Project root
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Service account file
-SERVICE_ACCOUNT = BASE_DIR / "firebase" / "serviceAccountKey.json"
-
+SERVICE_ACCOUNT = os.environ.get(
+    "FIREBASE_KEY_PATH",
+    str(BASE_DIR / "firebase" / "serviceAccountKey.json"),
+)
 # Firebase Realtime Database URL
 DATABASE_URL = "https://fire-gas-detection-7189b-default-rtdb.firebaseio.com"
 
